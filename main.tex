@@ -1,22 +1,36 @@
 \documentclass[10pt,twocolumn,letterpaper]{article}
-\usepackage{cvpr}
 
+%%%%%%%%% PAPER TYPE
+\usepackage[review]{cvpr}
+
+% Import preamble
 \input{preamble}
 
-\begin{document}
+% Hyperref settings
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
 
-\title{Predicting Pokemon Battle Outcomes}
+%%%%%%%%% PAPER INFO
+\def\paperID{*****}
+\def\confName{CVPR}
+\def\confYear{2026}
 
+%%%%%%%%% TITLE
+\title{Predicting Pok\'emon Battle Outcomes Using the First 30 Turns}
+
+%%%%%%%%% AUTHORS (same institution)
 \author{
-Alessandro Gregorio Luciani \\
-\texttt{luciani.2071243@studenti.uniroma1.it}
-\and
-Alessandro Pantella \\
-\texttt{pantella.2053151@studenti.uniroma1.it}
-\and
-Federico Consorzio \\
-\texttt{consorzio.2089703@studenti.uniroma1.it}
+Alessandro Gregorio Luciani\\
+Alessandro Pantella\\
+Federico Consorzio\\
+Sapienza University of Rome\\
+Foundamentals of Data Science\\
+{\tt\small luciani.2071243@studenti.uniroma1.it}\\
+{\tt\small pantella.2053151@studenti.uniroma1.it}\\
+{\tt\small consorzio.2089703@studenti.uniroma1.it}
 }
+
+\begin{document}
 
 \maketitle
 
