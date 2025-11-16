@@ -1,0 +1,90 @@
+def create_features(data: list[dict]) -> pd.DataFrame:
+
+    feature_list = []
+
+    for battle in tqdm(data, desc="Extracting features"):
+        feats = {}
+
+        timeline = battle.get('battle_timeline', []) or []
+
+        # accuracy diff
+        p1_acc, p2_acc, acc_diff = extract_accuracy_difference(timeline)
+        feats['accuracy_diff'] = acc_diff
+
+        (p1_n_changes,
+         p1_effects,
+         p1_pok_cond,
+         p2_n_changes,
+         p2_effects,
+         p2_pok_cond) = track_pokemon_conditions(battle)
+
+        # boost diff
+        p1_boosts, p2_boosts, boost_diff = extract_boost_difference(timeline)
+        feats['boost_diff'] = boost_diff
+
+        # mean HP
+        p1_mean_pc_hp = np.mean([info['hp'] for info in p1_pok_cond.values()])
+        p2_mean_pc_hp = np.mean([info['hp'] for info in p2_pok_cond.values()])
+        feats['p1_mean_pc_hp'] = p1_mean_pc_hp
+        feats['p2_mean_pc_hp'] = p2_mean_pc_hp
+
+        # surviving pokémon
+        feats['p1_surviving_pokemon'] = sum(info['hp'] > 0 for info in p1_pok_cond.values())
+        feats['p2_surviving_pokemon'] = sum(info['hp'] > 0 for info in p2_pok_cond.values())
+
+        #  status score 
+        p1_status_score = sum(
+            1 for info in p1_pok_cond.values()
+            if info['hp'] > 0 and info['status'] != 'nostatus'
+        ) + p1_effects
+
+        p2_status_score = sum(
+            1 for info in p2_pok_cond.values()
+            if info['hp'] > 0 and info['status'] != 'nostatus'
+        ) + p2_effects
+
+        feats['p1_status_score'] = p1_status_score
+        feats['p2_status_score'] = p2_status_score
+
+        # base stats difference (P1-P2)
+        speed, defense, attack, sp_attack, sp_defense, hp = compute_differences_base_stats(
+            p1_pok_cond, p2_pok_cond, species_idx
+        )
+        feats['total_speed_difference']      = speed
+        feats['total_attack_difference']     = attack
+        feats['total_defense_difference']    = defense
+        feats['total_sp_attack_difference']  = sp_attack
+        feats['total_sp_defense_difference'] = sp_defense
+        feats['total_hp_difference']         = hp
+
+        # switch diff
+        feats['switch_diff'] = p1_n_changes - p2_n_changes
+
+        # lead speed diff
+        p1_lead_speed = get_lead_speed(battle, 'p1', species_idx)
+        p2_lead_speed = get_lead_speed(battle, 'p2', species_idx)
+        feats['lead_speed_diff'] = p1_lead_speed - p2_lead_speed
+
+        
+        feats['battle_id'] = battle.get('battle_id')
+        if 'player_won' in battle:
+            feats['player_won'] = int(battle['player_won'])
+
+        feature_list.append(feats)
+
+    return pd.DataFrame(feature_list).fillna(0)
+
+
+
+print("Processing training data...")
+train_df = create_features(train_data)
+
+print("\nProcessing test data...")
+test_data = []
+with open(test_file_path, 'r') as f:
+    for line in f:
+        test_data.append(json.loads(line))
+test_df = create_features(test_data)
+
+print("\nTraining features preview:")
+display(train_df.head())
