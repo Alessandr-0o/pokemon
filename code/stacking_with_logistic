@@ -1,0 +1,140 @@
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
+from xgboost import XGBClassifier
+from sklearn.model_selection import cross_val_score
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+
+lr_pipe = Pipeline([
+    ('scaler', StandardScaler()),
+    ('logreg', LogisticRegression(
+        max_iter=1000,
+        solver='liblinear', 
+        random_state=42
+    ))
+])
+
+param_lr = {
+    'logreg__C': [0.1, 1.0, 10.0],
+    'logreg__penalty': ['l1', 'l2']
+}
+
+
+svm_pipe = Pipeline([
+    ('scaler', StandardScaler()),
+    ('svm', SVC(probability=True, random_state=42))
+])
+
+param_svm = {
+    'svm__C': [0.5, 1.0, 5.0],
+    'svm__kernel': ['rbf'],
+    'svm__gamma': ['scale', 'auto']
+}
+
+rf = RandomForestClassifier(
+    n_jobs=-1,
+    random_state=42
+)
+
+param_rf = {
+    'n_estimators': [200, 400],
+    'max_depth': [None, 10, 20],
+    'min_samples_split': [2, 5]
+}
+
+
+xgb = XGBClassifier(
+    tree_method='hist',
+    eval_metric='logloss',
+    n_jobs=-1,
+    random_state=42
+)
+
+param_xgb = {
+    'n_estimators': [200, 400],
+    'max_depth': [3, 5],
+    'learning_rate': [0.05, 0.1],
+    'subsample': [0.8, 1.0]
+}
+
+
+
+def tune_model(estimator, param_grid, X, y, cv, scoring='accuracy', name='model'):
+    print(f"\nTuning {name}...")
+    gs = GridSearchCV(
+        estimator,
+        param_grid,
+        cv=cv,
+        scoring=scoring,
+        n_jobs=-1,
+        verbose=1
+    )
+    gs.fit(X, y)
+    print(f"Best params for {name}: {gs.best_params_}")
+    print(f"Best {scoring} for {name}: {gs.best_score_:.4f}")
+    return gs.best_estimator_
+
+best_lr  = tune_model(lr_pipe,  param_lr,  X_train, y_train, cv, name='Logistic Regression')
+best_svm = tune_model(svm_pipe, param_svm, X_train, y_train, cv, name='SVM')
+best_rf  = tune_model(rf,       param_rf,  X_train, y_train, cv, name='Random Forest')
+best_xgb = tune_model(xgb,      param_xgb, X_train, y_train, cv, name='XGBoost')
+
+
+base_estimators = [
+    ('lr',  best_lr),
+    ('svm', best_svm),
+    ('rf',  best_rf),
+    ('xgb', best_xgb)
+]
+
+
+final_estimator = LogisticRegression(
+    max_iter=1000,
+    solver='lbfgs',
+    random_state=42
+)
+
+stack_clf = StackingClassifier(
+    estimators=base_estimators,
+    final_estimator=final_estimator,
+    cv=cv,
+    n_jobs=-1,
+    passthrough=False  
+)
+
+print("\nFitting stacking classifier...")
+stack_clf.fit(X_train, y_train)
+
+
+y_test_proba = stack_clf.predict_proba(X_test)[:, 1]
+
+y_test_pred = stack_clf.predict(X_test)
+
+
+print("\nValutazione meta-modello (Stacking) con CV=5...")
+
+stack_scores = cross_val_score(
+    stack_clf,
+    X_train,
+    y_train,
+    cv=cv,
+    scoring='accuracy',
+    n_jobs=-1
+)
+
+print(f"Accuracy media Stacking (CV=5): {stack_scores.mean():.4f}")
+print(f"Deviazione standard:             {stack_scores.std():.4f}")
+
+
+submission = pd.DataFrame({
+    'battle_id': test_df['battle_id'],
+    'player_won': y_test_pred
+})
+submission.to_csv('submission.csv', index=False)
+print("Salvata: submission.csv")
