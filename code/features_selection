@@ -1,0 +1,20 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+corr = train_df.corr(numeric_only=True)
+
+plt.figure(figsize=(14, 10))
+sns.heatmap(corr, cmap="coolwarm", annot=True, square=True)
+plt.title("Correlation Heatmap")
+plt.show()
+
+cols_to_drop = ['total_sp_defense_difference']
+
+train_df = train_df.drop(columns=cols_to_drop, errors='ignore')
+test_df  = test_df.drop(columns=cols_to_drop, errors='ignore')
+
+feature_names = [c for c in train_df.columns if c not in ['battle_id', 'player_won']]
+X_train = train_df[feature_names]
+y_train = train_df['player_won']
+
+X_test = test_df[feature_names]
