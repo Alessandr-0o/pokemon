@@ -1,1 +1,2 @@
-
+Unfortunately, since we don't have access to the private leaderboard, we can evaluate our models using the public leaderboard,combined with local cross-validation accuracy, where stacking models appear to learn from the data better than simple Logistic Regression.
+ We included Logistic Regression to see if a linear model could compete with more complex stacking models. In summary, stacking models offer better performance at the cost of more careful management.
